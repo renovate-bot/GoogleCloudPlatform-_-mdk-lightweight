@@ -1,0 +1,53 @@
+# Copyright 2026 Google LLC.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# 1. Start from MDK base python image with pre-installed dependencies
+FROM python:3.11-slim
+
+# Grab uv.
+COPY --from=ghcr.io/astral-sh/uv:0.6.3 /uv /uvx /bin/
+
+# Use ARG to define a variable for the application directory
+ARG APP_DIR=.
+
+WORKDIR /app
+
+# 2. Copy Dependency Definitions
+# Included .python-version as per your initial principle
+COPY pyproject.toml .python-version ./
+COPY uv.lock* ./
+
+
+# 4. Generate Lockfile (Matches your initial principle)
+# Ensures lockfile is up to date with pyproject.toml before syncing
+RUN uv lock
+
+# 5. Incremental Install (Dependencies Only)
+# Installs dependencies defined in the lockfile we just processed.
+# Uses the cache mount to speed up downloads.
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-editable --no-dev --no-install-project
+
+# 6. Copy Source Code
+COPY src/ src/
+COPY model_products/ model_products/
+COPY examples* examples/
+
+# 7. Install the Project (Matches your initial principle)
+# Uses 'uv pip install .' to install the app itself after dependencies are set.
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install --force-reinstall .
+
+
+CMD [ "/bin/bash" ]

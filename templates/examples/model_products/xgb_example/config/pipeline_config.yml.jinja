@@ -1,0 +1,136 @@
+# Copyright 2026 Google LLC.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# This file acts as the central registry for a given "model product," defining references
+# to all the reusable building blocks - images, components, and pipelines — that
+# constitute your MLOps workflows.
+
+# For more details on this file, please see docs/config/mdk_pipeline_config_usage.md
+
+lite: {{ lite | lower }}
+
+images:
+
+  standard:
+    artifact: "standard:latest"
+    build_config_dir: "model_products/main_product/images/standard"
+
+  # Uncomment if you intend to use Bring-Your-Own-Container (BYOC) - Dockerfile version
+  # byoc:
+  #   artifact: "byoc:latest"
+  #   build_config_dir: "model_products/main_product/images/byoc"
+
+pipelines:
+
+  xgb_training_pipeline:
+    description: "Sample pipeline that demostrates how one might use XGBoost in a training pipeline."
+    function: pipeline
+    module_path: examples/model_products/xgb_example/pipelines/xgb_training_pipeline/pipeline.py
+
+  xgb_inference_pipeline:
+    description: "Sample pipeline that demostrates how one might use XGBoost in a inference pipeline."
+    function: pipeline
+    module_path: examples/model_products/xgb_example/pipelines/xgb_inference_pipeline/pipeline.py
+
+  xgb_deployment_pipeline:
+    description: Pipeline to be used to deploy a trained model.
+    function: pipeline
+    module_path: examples/model_products/xgb_example/pipelines/xgb_deployment_pipeline/pipeline.py
+
+components:
+
+  log_config_to_experiment:
+    description: "Logging config values to Vertex Experiments."
+    function: log_config_to_experiment
+    module_path: model_products/main_product/components/log_config_to_experiment/component.py
+    image_artifact: "standard:latest"
+  xgb_preprocess:
+    description: "Data cleaning, feature engineering."
+    function: xgb_preprocess
+    module_path: examples/model_products/xgb_example/components/xgb_preprocess/component.py
+    image_artifact: "standard:latest"
+  xgb_optimize_hyperparameters:
+    description: "Hyperparameter tuning workflow"
+    function: xgb_optimize_hyperparameters
+    module_path: examples/model_products/xgb_example/components/xgb_optimize_hyperparameters/component.py
+    image_artifact: "standard:latest"
+  xgb_train:
+    description: "Model training workflow"
+    function: xgb_train
+    module_path: examples/model_products/xgb_example/components/xgb_train/component.py
+    image_artifact: "standard:latest"
+    # # These values below are for overriding default resources:
+    # cpu: "8"
+    # mem: "64G"
+  model_explainability:
+    description: "Model explainability workflow"
+    function: model_explainability
+    module_path: examples/model_products/xgb_example/components/model_explainability/component.py
+    image_artifact: "standard:latest"
+  xgb_evaluate:
+    description: "Model evaluation workflow"
+    function: xgb_evaluate
+    module_path: examples/model_products/xgb_example/components/xgb_evaluate/component.py
+    image_artifact: "standard:latest"
+  xgb_batch_predict:
+    description: "Batch Prediction"
+    function: xgb_batch_predict
+    module_path: examples/model_products/xgb_example/components/xgb_batch_predict/component.py
+    image_artifact: "standard:latest"
+  upload_to_model_registry:
+    description: "Upload a trained model to Model Registry"
+    function: upload_to_model_registry
+    module_path: model_products/main_product/components/upload_to_model_registry/component.py
+    image_artifact: "standard:latest"
+  model_monitoring:
+    description: "Setup Model Monitoring jon for a Vertex AI Model"
+    function: model_monitoring
+    module_path: model_products/main_product/components/model_monitoring/component.py
+    image_artifact: "standard:latest"
+  model_deployment:
+    description: "Model deployment workflow"
+    function: model_deployment
+    module_path: model_products/main_product/components/model_deployment/component.py
+    image_artifact: "standard:latest"
+
+  # # Bring-Your-Own-Container (BYOC) example scenarios:
+  # # BYOC Scenario 1: Running command/args with full_uri container (e.g. "us-docker.pkg.dev/vertex-ai/training/tf-cpu.2-17.py310:latest”)
+  # xgb_train:
+  #   description: "Model training workflow"
+  #   function: xgb_train
+  #   module_path: examples/model_products/xgb_example/components/xgb_train/component.py
+  #   image_artifact: "us-docker.pkg.dev/vertex-ai/training/tf-cpu.2-17.py310:latest"
+  #   container_specs:
+  #     command:
+  #     - bash
+  #     - -c
+  #     - echo 'hello world'
+  # # BYOC Scenario 2: Running script within full_uri container
+  # xgb_train:
+  #   description: "Model training workflow"
+  #   function: xgb_train
+  #   module_path: examples/model_products/xgb_example/components/xgb_train/component.py
+  #   image_artifact: "us-docker.pkg.dev/vertex-ai/training/tf-cpu.2-17.py310:latest"
+  #   container_specs:
+  #     script_path: src/model_workflow/demo_byoc.py
+  # # BYOC Scenario 3: Running command/args with Docker container (e.g. "byoc:latest”)
+  # xgb_train:
+  #   description: "Model training workflow"
+  #   function: xgb_train
+  #   module_path: examples/model_products/xgb_example/components/xgb_train/component.py
+  #   image_artifact: "byoc:latest"
+  #   container_specs:
+  #     command:
+  #     - python
+  #     - trainer.py

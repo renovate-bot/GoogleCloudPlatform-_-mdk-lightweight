@@ -1,0 +1,33 @@
+---
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: daily
+    allow:
+      - dependency-type: "direct"
+    ignore:
+      - dependency-name: "poetry"  # Since we're moving to uv
+    groups:
+      all:
+        patterns:
+          - "*"
+
+
+
+    labels:
+      - "dependencies"
+      - "automated update"
+
+    commit-message:
+      prefix: "[Dependabot]"
+      include: "scope"
+
+    open-pull-requests-limit: 10
+
+    # Automatically rebase if conflicts occur
+    rebase-strategy: auto
+
+    # Prefer updates to the next minor/patch version
+    versioning-strategy: increase

@@ -1,0 +1,131 @@
+name: Publish Model Operations
+
+on:
+  pull_request_target:
+    types: [closed]
+    # Trigger only if the operations yml has changed
+    paths:
+      - 'publish_and_rollback/operations.yml'
+    branches:
+      - dev
+      - stage
+      - main
+
+jobs:
+  find_and_parse_configs:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    outputs:
+      parsed_configs: ${{steps.build_config_list.outputs.parsed_configs}}
+      any_configs_found: ${{steps.build_config_list.outputs.any_configs_found}}
+    steps:
+      - name: Checkout base branch for diffing
+        uses: actions/checkout@v4
+        with:
+          ref: ${{github.event.pull_request.base.sha}}
+          path: base_repo
+          fetch-depth: 0
+
+      - name: Checkout merge commit for target files
+        uses: actions/checkout@v4
+        with:
+          ref: ${{github.event.pull_request.merge_commit_sha}}
+          path: head_repo
+          fetch-depth: 0
+
+      - name: Install yq (YAML processor)
+        run: |
+          sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Find and parse environment-specific config
+        id: build_config_list
+        run: |
+          # The single config file we care about
+          CONFIG_FILE="publish_and_rollback/operations.yml"
+
+          # Determine the target environment from the base branch name
+          TARGET_ENV_NAME=${{ github.base_ref == 'main' && 'prod' || github.base_ref }}
+          echo "Target branch is '${{ github.base_ref }}', so processing environment: '$TARGET_ENV_NAME'"
+
+          # Check if the specific config file was actually changed in the PR
+          CHANGED_FILE=$(git -C head_repo diff --diff-filter=ACMRT --name-only ${{github.event.pull_request.base.sha}} ${{github.event.pull_request.merge_commit_sha}} -- "$CONFIG_FILE")
+
+          ALL_PARSED_CONFIGS="[]"
+          CONFIG_FOUND="false"
+
+          if [ -z "$CHANGED_FILE" ]; then
+            echo "The config file '$CONFIG_FILE' was not changed in this PR. No operations to run."
+          else
+            echo "Processing config file: $CONFIG_FILE"
+            if [ -f "head_repo/$CONFIG_FILE" ]; then
+                # Use yq to extract ONLY the config block for the TARGET_ENV_NAME
+                # and convert it to JSON.
+                PARSED_ENV_CONFIG_JSON=$(yq e '.environments.'"$TARGET_ENV_NAME"'' -o=json "head_repo/$CONFIG_FILE")
+
+                # Check if yq found the environment key and it's not null/empty
+                if [ -z "$PARSED_ENV_CONFIG_JSON" ] || [ "$PARSED_ENV_CONFIG_JSON" == "null" ]; then
+                  echo "Warning: The key 'environments.$TARGET_ENV_NAME' was not found or is empty in '$CONFIG_FILE'. No operations to run for this environment."
+                else
+                  # The Python script expects a list of configs, so we wrap our single object in an array.
+                  ALL_PARSED_CONFIGS=$(echo "[]" | jq --argjson new_config "$PARSED_ENV_CONFIG_JSON" '. += [$new_config]')
+                  CONFIG_FOUND="true"
+                fi
+            else
+                echo "Warning: Config file 'head_repo/$CONFIG_FILE' not found. Skipping."
+            fi
+          fi
+
+          echo "Config found for environment '$TARGET_ENV_NAME': $CONFIG_FOUND"
+
+          # Use a unique delimiter for multi-line output to GITHUB_OUTPUT
+          PARSED_CONFIGS_DELIMITER=$(uuidgen)
+          echo "parsed_configs<<$PARSED_CONFIGS_DELIMITER" >> "$GITHUB_OUTPUT"
+          echo "$ALL_PARSED_CONFIGS" >> "$GITHUB_OUTPUT"
+          echo "$PARSED_CONFIGS_DELIMITER" >> "$GITHUB_OUTPUT"
+
+          echo "any_configs_found=$CONFIG_FOUND" >> "$GITHUB_OUTPUT"
+
+          echo "--- Parsed config for '$TARGET_ENV_NAME' (JSON format) ---"
+          echo "$ALL_PARSED_CONFIGS" | jq .
+
+  execute_python_script:
+    if: needs.find_and_parse_configs.outputs.any_configs_found == 'true'
+    needs: find_and_parse_configs
+    runs-on: ubuntu-latest
+    environment: ${{github.base_ref == 'main' && 'prod' || github.base_ref}}
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    steps:
+      - name: 'Checkout Repository'
+        uses: actions/checkout@v4
+
+      - name: 'Set up Python'
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: 'Install Python Dependencies'
+        run: |
+            pip install uv
+            uv sync
+
+      - name: 'Get ID Token'
+        id: auth
+        uses: 'google-github-actions/auth@v2'
+        with:
+          token_format: 'id_token'
+          workload_identity_provider: '${{secrets.WIF_PROVIDER}}'
+          service_account: '${{secrets.WIF_SERVICE_ACCOUNT}}'
+          id_token_audience: '${{vars.expanded_mr_url}}'
+
+      - name: Execute deployment operations via Python script
+        env:
+          ALL_PARSED_CONFIGS_JSON: ${{needs.find_and_parse_configs.outputs.parsed_configs}}
+          PYTHONPATH: ${{github.workspace}}/src
+          ENVIRONMENT: ${{github.base_ref == 'main' && 'prod' || github.base_ref}}
+          GCP_ID_TOKEN: ${{steps.auth.outputs.id_token}}
+        run: |
+          source .venv/bin/activate
+          python .github/scripts/github_actions_model_publish_ops.py

@@ -1,0 +1,30 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Mac OS junk
+.DS_Store
+
+# Emacs junk
+*~
+
+# We don't want to check in our .copier-answers.yml file, from developing mdk init.
+.copier-answers.yml
+
+# .env files are per-user and should not be checked into a repo.
+.env
+
+# Kubeflow creates and uses this directory for local pipeline runs, but we don't
+#   want it checked in to a Git repo.
+local_outputs/
+
+# Compiled Kubeflow components shouldn't be check in to Git.
+component.yml
+pipeline.yml

@@ -1,0 +1,5 @@
+---
+
+services:
+  my-service:
+    image_tag: "dryrun-20250326-009"

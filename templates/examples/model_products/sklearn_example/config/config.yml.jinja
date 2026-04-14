@@ -1,0 +1,439 @@
+# Copyright 2026 Google LLC.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Model-Specific Configuration
+# ----------------------------
+# This file centralizes configurations relevant to your machine learning model.
+# It explicitly defines all parameters for transparency, including those that
+# might match Pydantic model defaults.
+
+# For more details on this file, please see docs/config/mdk_general_config_usage.md
+
+# Environment-Specific overrides
+# ------------------------------
+# This section is for defining keys that are different across environments. These
+# values will override the values in the rest of the config if they are specified.
+# If they are not specified, the values from the below config are used.
+environments:
+  dev:
+    model_registry:
+      model_labels:
+        status: development
+      model_status: training
+    inference:
+      datasets_path: "bq://{{project_id_dev}}.ml_dataset.subset_no_labels"
+      bq_output_table: "bq://{{project_id_dev}}.ml_dataset.xgb_predictions"
+    model_monitoring:
+      target_dataset_uri: "bq://{{project_id_dev}}.ml_dataset.subset_no_labels"
+
+{% if not lite %}
+  stage:
+    model_registry:
+      model_labels:
+        status: staging
+      model_status: staged
+    inference:
+      datasets_path: "bq://{{project_id_stage}}.ml_dataset.subset_no_labels"
+      bq_output_table: "bq://{{project_id_stage}}.ml_dataset.xgb_predictions"
+    model_monitoring:
+      target_dataset_uri: "bq://{{project_id_stage}}.ml_dataset.subset_no_labels"
+
+  prod:
+    model_registry:
+      model_labels:
+        status: production
+      model_status: production
+    inference:
+      datasets_path: "bq://{{project_id_prod}}.ml_dataset.subset_no_labels"
+      bq_output_table: "bq://{{project_id_prod}}.ml_dataset.xgb_predictions"
+    model_monitoring:
+      target_dataset_uri: "bq://{{project_id_prod}}.ml_dataset.subset_no_labels"
+{% endif %}
+
+
+# General Model Identification & Referencing
+# ------------------------------------------
+# These fields define the core identity of your model across all MDK components.
+general:
+  # The unique name of your model. This will be used as the display name
+  # in Vertex AI Model Registry and Endpoints.
+  model_name: "sklearn_example_model"
+
+  # How the model should be referenced for inference, monitoring, and deployment.
+  # Options: "latest", "primary", a semantic version (e.g., "0.1.1"),
+  # or a direct GCS path (e.g., "gs://path/to/model/dir").
+  model_inference_reference: "latest"
+
+
+# Training Pipeline Configuration
+# -------------------------------
+# This section is free-form and contains parameters directly relevant
+# to your model's training script.
+training:
+
+  # Configuration for Vertex AI Feature Store:
+  feature_store:
+
+      # ID of the Vertex Feature Group.
+      feature_group_id: "dry_beans_fg"
+
+      # BQ table with entity_id and timestamp columns for point-in-time lookup.
+      read_instances_uri: "bq://{{project_id_dev}}.ml_data_dev.dry_beans_read_instances"
+
+      # Region of the Vertex AI Feature Store.
+      region: us
+
+  # The column containing the y labels.
+  target_column: Class
+
+  # (Optional) Filename for optimal parameters. For use with hyperparameter tuning option.
+  # optimal_params_filename: optimal_params.txt
+
+  # (Optional) The gcs location of the optimal_params json file. For use with hyperparameter tuning option.
+  # optimal_params_path: ''
+
+  # The proportion of the dataset to include in the validation split (as a
+  #   function of the total, so that train + val + test = 1.0).
+  val_size: 0.2
+
+  # The proportion of the dataset to include in the test split (as a function of
+  #   the total, so that train + val + test = 1.0).
+  test_size: 0.2
+
+  # The filename of the model that will be saved. Note that by default the
+  #   Vertex AI Model Registry expects a model to be named one of: {model.pkl,
+  #   model.bst, model.joblib}
+  model_filename: model.pkl
+
+  # The BigQuery dataset where training data resides.
+  dataset: ml_dataset
+
+  # Model Explainability config
+  run_shap_analysis: True
+  shap_sample_size: 500
+
+  # Optional. Cron schedule for the training job (e.g., "0 * * * *").
+  # If not set, the job will not be re-run on a schedule.
+  # cron_schedule: '0 0 * * *'
+
+
+# Batch Inference Configuration
+# -----------------------------
+# This section is free-form and defines parameters for batch prediction jobs.
+# Note: Core model identification (model_name, model_inference_reference)
+# is sourced from the top-level 'general' section.
+inference:
+  # The GCS or BigQuery URI of the dataset for which predictions are needed.
+  # - BigQuery format: bq://project-id.dataset_name.table_name
+  # - GCS format: gs://bucket-name/path/to/data.csv
+  datasets_path: "bq://{{project_id_dev}}.ml_dataset.subset_no_labels"
+
+  # The destination BigQuery table for storing the batch prediction results.
+  # The table will be created if it doesn't exist, or appended to if it does.
+  bq_output_table: "bq://{{project_id_dev}}.ml_dataset.sklearn_predictions"
+
+  # A list of class names used to map the model's numeric output to human-readable labels.
+  # The order of the names should correspond to the model's output indices.
+  class_names:
+    - BARBUNYA
+    - BOMBAY
+    - CALI
+    - DERMOSAN
+    - HOROZ
+    - SEKER
+    - SIRA
+
+  # Set to 'True' to setup and run Model Monitoring Job for this inference.
+  # If 'False', the Model Monitoring Job will be skipped.
+  run_monitoring: True
+
+  # Optional. Cron schedule for the inference job (e.g., "0 * * * *").
+  # If not set, the job will not be re-run on a schedule.
+  # cron_schedule: '0 0 * * *'
+
+
+# Model Registry Configuration (Vertex AI & Expanded Registry Metadata)
+# ---------------------------------------------------------------------
+# Settings used when registering a new model version in Vertex AI
+# and populating metadata in the Expanded Model Registry.
+# Note: Core model identification (model_name) is sourced from the top-level 'general' section.
+model_registry:
+  # Versioning information for the Expanded Model Registry.
+  # These are mandatory if registering a model.
+  major_version: 0
+  minor_version: 1
+
+  # Optional. User provided version aliases so that a model version can be
+  #   referenced via alias instead of auto-generated version ID. A default
+  #   version alias will be created for the first version of the model.
+  # The format is [a-z][a-zA-Z0-9-]{0,126}[a-z0-9]
+  model_version_aliases: []
+
+  # Optional. The description of the model version being uploaded.
+  model_version_description: |
+    This model is an Sklearn Decision Tree Classifier trained to identify 7 different types of dry beans
+    (Sira, Barbunya, Bombay, Cali, Dermason, Horoz, Seker) based on 16 geometric feature measurements.
+
+    **Training Details:**
+    *   **Dataset:** Processed UCI Dry Bean Dataset.
+        *   Training Samples: 10,808
+        *   Test Samples: 1,351
+        *   Validation Samples: 1,351 (if used during hyperparameter tuning)
+    *   **Features:** All 16 numeric geometric features were used (e.g., Area, Perimeter, MajorAxisLength).
+        No custom feature engineering or scaling was applied beyond standard pre-processing (e.g., missing value imputation, if any).
+
+  # The URI of the Model serving container. This is a prebuilt container.
+  # See here for more details: https://cloud.google.com/vertex-ai/docs/predictions/pre-built-containers
+  serving_container_image_uri: "us-docker.pkg.dev/vertex-ai/prediction/sklearn-cpu.1-5:latest"
+
+  # Declaration of ports that are exposed by the container. This field is
+  #   primarily informational, it gives Vertex AI information about the
+  #   network connections the container uses. Listing or not a port here has
+  #   no impact on whether the port is actually exposed, any port listening on
+  #   the default "0.0.0.0" address inside a container will be accessible from
+  #   the network.
+  serving_container_ports: [8080]
+
+  # Optional. The labels with user-defined metadata to organize your Models.
+  #   Label keys and values can be no longer than 64 characters (Unicode
+  #   codepoints), can only contain lowercase letters, numeric characters,
+  #   underscores and dashes. International characters are allowed.
+  #   See https://goo.gl/xmQnxf for more information and examples of labels.
+  model_labels:
+    team: my-team
+    task: multi-class_classification # e.g., binary_classification, regression, anomaly_detection, forecasting
+    algorithm: random_forest # Specific algorithm used (e.g., random_forest, linear_regression, BERT)
+    dataset_source: uci_dry_bean_dataset # Specific dataset used or its origin, likely bq
+    status: development # e.g., production, staging, experimental, deprecated, training
+    data_type: tabular_features # e.g., text, image, time_series, audio
+    criticality: low # Optional: high, medium, low (impact of failure)
+    owner: john_doe # Optional: Specific individual or sub-team responsible
+    purpose: bean_quality_control # Optional: high-level business purpose
+
+  # Optional. A listing of the GCP projects and their environments. Necessary for promotion tracking.
+  #   Example: {"train": "my-ml-dev-project-123", "stage": "my-ml-stage-project-123", "prod": "my-ml-prod-project-123"}
+  path_to_production_projects:
+    dev: "{{project_id_dev}}"
+    {% if not lite %}
+    stage: "{{project_id_stage}}"
+    prod: "{{project_id_prod}}"
+    {% endif %}
+
+  # Optional. Specifies whether the model was trained with sensitive/PII data.
+  is_sensitive_data: False
+
+  # Optional. Current lifecycle status. Options: training, staged, production, deprecated, archived.
+  model_status: training
+
+  # Optional. A short description of the use case.
+  # use_case: Dry beans classification
+
+  # Optional. Any comments or general notes that might need to be tracked by a data science team for a given model.
+  # general_notes:
+
+  # Optional. ServiceNow ticket ID for governance/approval tracking.
+  # service_now_ticket_id:
+
+  # Optional. Pointer to the currently active Vertex AI Endpoint ID (if deployed).
+  # deployment_endpoint_id:
+
+  # Optional. For a given model_name and deployment_environment, indicates if this is the currently serving primary model. Allows tracking primary promotion.
+  is_primary_deployment: False
+
+  # Optional. JSON object for shadow deployment details.
+  #   Example: {"active": true, "duration_hours": 24, "validation_result": "pending"}
+  deployment_status: {"status": "active"}
+
+  # Optional. Status of model publish. Options: champion, challenger, archived.
+  # publish_status: challenger
+
+
+# Model Deployment Configuration (for Vertex AI Endpoints)
+# --------------------------------------------------------
+# These settings control how the model is deployed to a Vertex AI Endpoint.
+# Note: Core model identification (model_name, model_inference_reference)
+# and deployment_environment are sourced from the top-level 'general' config
+deployment:
+  # Optional. Display name of the Vertex AI Endpoint.
+  # If not specified, defaults to the `model_name` from the `general` section.
+  endpoint_name: sklearn_endpoint_standard
+
+  # The machine type for the deployed model (e.g., 'n1-standard-2', 'e2-standard-4').
+  # This field is required.
+  machine_type: "n2-standard-4"
+
+  # Minimum number of replicas for the deployed model.
+  min_replica_count: 1
+
+  # Maximum number of replicas for the deployed model.
+  max_replica_count: 1
+
+  # If true, this deployment becomes the primary (100% traffic), demoting others.
+  is_primary_deployment: False
+
+  # If true, deploys to a new, separate endpoint for shadow testing.
+  shadow_mode: False
+
+  # Optional. Explicit traffic split for models on the endpoint.
+  # Overrides other traffic logic if set.
+  # Example: {"7765439409633099776": 90, "0": 10}
+  # (where "0" is a placeholder for the newly deploying model's ID).
+  # traffic_split:
+
+  # Set to 'True' to setup and run Model Monitoring Job for this deployment.
+  # If 'False', the Model Monitoring Job will be skipped.
+  run_monitoring: False
+
+
+# Model Monitoring Configuration (for Vertex AI Model Monitoring)
+# ---------------------------------------------------------------
+# These settings define how model performance and data quality are monitored.
+# Note: `model_name`, `model_inference_reference`, and `deployment_environment`
+# are sourced from the top-level `general` section.
+model_monitoring:
+  # --- Target Resource (Provide EITHER target_dataset_uri, target_endpoint, OR target_dataset_query) ---
+
+  # (Optional) For BATCH monitoring: The GCS or BigQuery URI of the recent data to analyze.
+  # Use this if you are monitoring batch prediction results.
+  target_dataset_uri: "bq://{{project_id_dev}}.ml_dataset.subset_no_labels"
+
+{% if lite %}
+  # (Optional) For BATCH monitoring: The GCS or BigQuery URI of the baseline data to analyze (Lite mode).
+  # Use this if you are monitoring batch prediction results without EMR.
+  baseline_dataset_uri: "bq://{{project_id_dev}}.ml_dataset.samples"
+{% endif %}
+
+  # (Optional) For REAL-TIME monitoring: The full resource name of the deployed Vertex AI Endpoint.
+  # Use this if you want to monitor an *existing* live endpoint. Otherwise, the pipeline will
+  # use the output of the model_deployment component.
+  # target_endpoint: "projects/PROJECT_NUMBER/locations/REGION/endpoints/ENDPOINT_ID"
+
+  # (Optional) For REAL-TIME monitoring: The time window for collecting endpoint logs for
+  # real-time monitoring (e.g., '24h'). Format: 'w|W': Week, 'd|D': Day, 'h|H'
+  # window: 24h
+
+  # A map of feature names to their data types. This is used to understand the
+  # schema of your data for monitoring.
+  # Example: {feature1: "string", feature2: "float", feature3: "integer"}
+  feature_fields_schema_map:
+    Area: integer
+    Perimeter: float
+    MajorAxisLength: float
+    MinorAxisLength: float
+    AspectRation: float
+    Eccentricity: float
+    ConvexArea: float
+    EquivDiameter: float
+    Extent: float
+    Solidity: float
+    roundness: float
+    Compactness: float
+    ShapeFactor1: float
+    ShapeFactor2: float
+    ShapeFactor3: float
+    ShapeFactor4: float
+
+  # Optional. The display name for the new model monitoring job.
+  # If not specified, a default name will be generated.
+  model_monitor_job_display_name: 'sklearn-example-model-monitoring-job-'
+
+  # Optional. The display name for the model monitor resource.
+  model_monitor_display_name: 'sklearn-example-model-monitor'
+
+  # Optional. Resource name of an existing model monitor to use.
+  # Example: 'projects/{}/locations/us-central1/modelMonitors/12345'
+  # model_monitor_resource_name:
+
+  # Optional. Schema map for ground truth fields. Required for ground truth skew/drift monitoring.
+  # Example: {ground_truth_label: "STRING"}
+  # ground_truth_fields_schema_map:
+
+  # Optional. Schema map for prediction output fields. Required for prediction drift monitoring.
+  # Example: {prediction_score: "FLOAT"}
+  # prediction_fields_schema_map:
+
+  # Optional. GCS URI to store monitoring job output logs.
+  # Example: "gs://your-bucket/monitoring_logs"
+  # gcs_logs_uri:
+
+  # Enable monitoring for prediction output drift. Defaults to False.
+  use_prediction_output_drift: False
+
+  # Optional. Cron schedule for the monitoring job (e.g., "0 * * * *").
+  # If not set, the job will run only once on demand.
+  # cron_schedule: '0 0 * * *'
+
+  # Notification Settings
+  # ---------------------
+  # List of user email addresses for sending monitoring alerts.
+  # Defaults to an empty list.
+  user_emails:
+    - 'srastatter@google.com'
+
+  # Feature Drift Thresholds (utilizes defaults from `DriftThresholdsConfig`)
+  # -------------------------------------------------------------------
+  # Uncomment and modify these if you need to override the default thresholds.
+  feature_drift:
+    default_categorical_alert_threshold: 0.1 # Default is 0.1
+    default_numeric_alert_threshold: 0.1   # Default is 0.1
+    categorical_metric_type: "l_infinity"  # Default is "l_infinity"
+    numeric_metric_type: "jensen_shannon_divergence" # Default is "jensen_shannon_divergence"
+
+  # Prediction Drift Thresholds (utilizes defaults from `DriftThresholdsConfig`)
+  # ---------------------------------------------------------------------
+  prediction_drift:
+    default_categorical_alert_threshold: 0.1 # Default is 0.1
+    default_numeric_alert_threshold: 0.1   # Default is 0.1
+    categorical_metric_type: "l_infinity"  # Default is "l_infinity"
+    numeric_metric_type: "jensen_shannon_divergence" # Default is "jensen_shannon_divergence"
+
+
+  # Automatic Retraining Trigger Configuration
+  # ------------------------------------------
+  # Configures a Cloud Run service to trigger retraining pipelines on monitoring alerts.
+  {% if not lite %}
+  retraining:
+    # Set to 'True' to compile and upload the retraining artifacts to GCS.
+    # If 'False', the automatic retraining setup will be skipped. Defaults to False.
+    set_up_retraining: False
+
+    # The training pipeline name associated with this model.
+    training_pipeline_name: sklearn_training_pipeline
+
+    # The inference pipeline name associated with this model.
+    # inference_pipeline_name:
+
+    # The directory in which the retraining process should find the config/
+    # directory. (This should be consistent with how the Dockerfile is set up.)
+    app_root: /app
+  {% endif %}
+
+
+# Additional Pipeline Labels
+# --------------------------
+# These will be included as labels whenever a pipeline is submitted.
+#
+additional_pipeline_labels:
+  sklearn_training_pipeline:
+    lifecycle: train
+    use_case: sklearn_example
+
+
+# CI/CD Configuration
+# -------------------
+# Settings specific to continuous integration and deployment processes.
+ci_cd:
+  # List of pipelines to be executed during merge push to dev branch
+  # pipeline_names: ["sklearn_training_pipeline"]
+  pipeline_names: []

@@ -1,0 +1,61 @@
+name: Trigger Pipeline
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "GCP environment to run the workflow in"
+        required: true
+        type: choice
+        options:
+          - dev
+          - stage
+          - prod
+      pipeline-name:
+        description: "Pipeline name to trigger"
+        required: true
+        type: string
+  pull_request:
+    types: [opened, reopened, synchronize]
+    branches: [dev, stage, prod]
+    paths-ignore:
+      - "**.md"
+      - ".gitignore"
+      - "docs/**"
+  push:
+    branches:
+      - dev
+      - stage
+      - main
+    paths-ignore:
+      - "**.md"
+      - ".gitignore"
+      - "docs/**"
+      - 'publish_and_rollback/operations.yml'
+
+jobs:
+  # --- DEV ENVIRONMENT ---
+  train_build_and_push:
+    if: (github.event_name == 'push' && github.ref_name == 'dev') || (github.event_name == 'pull_request' && github.base_ref == 'dev') || (github.event_name == 'workflow_dispatch' && inputs.environment == 'dev')
+    uses: ./.github/workflows/build_and_deploy_pipelines.yml
+    with:
+      environment: dev
+      pipeline-name: ${{ inputs.pipeline-name || '' }}
+    secrets: inherit
+
+  # --- STAGE ENVIRONMENT ---
+  stage_build_and_push:
+    if: (github.event_name == 'push' && github.ref_name == 'stage') || (github.event_name == 'pull_request' && github.base_ref == 'stage') || (github.event_name == 'workflow_dispatch' && inputs.environment == 'stage')
+    uses: ./.github/workflows/build_and_deploy_pipelines.yml
+    with:
+      environment: stage
+      pipeline-name: ${{ inputs.pipeline-name || '' }}
+    secrets: inherit
+
+  # --- PROD ENVIRONMENT ---
+  prod_build_and_push:
+    if: (github.event_name == 'push' && github.ref_name == 'main') || (github.event_name == 'pull_request' && github.base_ref == 'main') || (github.event_name == 'workflow_dispatch' && inputs.environment == 'prod')
+    uses: ./.github/workflows/build_and_deploy_pipelines.yml
+    with:
+      environment: prod
+      pipeline-name: ${{ inputs.pipeline-name || '' }}
+    secrets: inherit

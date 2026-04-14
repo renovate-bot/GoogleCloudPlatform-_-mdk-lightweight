@@ -1,0 +1,166 @@
+# Copyright 2026 Google LLC.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Optional: Global metadata about this deployment configuration
+metadata:
+  config_version: "1.0"
+  description: "Declarative model deployment configurations for the '{{project_slug}}' repository."
+  author: "Data Science Team"
+
+# Options for Model Inference Reference:
+# - "latest", it will use the last created model for "model_name"
+# - "primary", it will use the primary model for "model_name" and the deployment_environment
+# - semantic version, it will use that specific model_semantic_version (e.g. 0.1.1)
+# - gcs path, it will use that specific gcs directory containing the model (e.g. gs://trained-model/)
+
+# --- Deployment Operations Section ---
+# This is a list allowing multiple operations to be defined in one config file.
+# The GitHub Action will iterate through this list and execute each operation.
+# This is broken up by environment as well, which corresponds to the github
+# repo source branch.
+environments:
+  # --------------------- DEV ENVIRONMENT ---------------------
+  dev:
+    api_settings:
+      expanded_model_registry_endpoint: "{{expanded_model_registry_endpoint}}"
+      project_id: "{{project_id_dev}}"
+      region: "{{region}}"
+      deployment_environment: "dev"
+    operations:
+
+    ###########################################
+    #                                         #
+    #   Uncomment to publish a new champion   #
+    #                                         #
+    ###########################################
+
+      # - name: "Publishing New Champion"
+      #   type: "publish_primary" # Maps to /deployments/publish_primary endpoint
+      #   target:
+      #     # Model Inference Reference (see options above)
+      #     model_name: {{project_slug}}
+      #     model_inference_reference: "latest"
+      #   # Specific status details for the model being promoted to primary
+      #   champion_status:
+      #     publish_status: "champion"
+      #     deployment_status:
+      #       status: "active"
+      #       reason: "new champion deployed"
+      #       inference_type: "batch-inference" # Required field
+      #   # Specific status details for the *currently* primary model that will be demoted
+      #   demoted_status:
+      #     publish_status: "archived"
+      #     deployment_status: # This will be passed as a dictionary for demoted_model_deployment_status
+      #       status: "inactive"
+      #       reason: "replaced by new champion"
+      #       inference_type: "batch-inference"
+
+    ###########################################
+    #                                         #
+    #   Uncomment to use Automatic rollback   #
+    #                                         #
+    ###########################################
+
+      # - name: "Automatic Rollback"
+      #   type: "rollback_primary" # Maps to /deployments/rollback_primary endpoint
+      #   target:
+      #     # Trigger automatic rollback to previous primary for this logical model name
+      #     model_name: {{project_slug}}
+      #     model_inference_reference: "latest"
+      #   champion_status:
+      #     publish_status: "champion"
+      #     deployment_status:
+      #       status: "active"
+      #       reason: "automatic rollback triggered"
+      #       inference_type: "batch-inference"
+      #   demoted_status:
+      #     publish_status: "challenger"
+      #     deployment_status:
+      #       status: "demoted"
+      #       reason: "automatic rollback demoted current primary"
+      #       inference_type: "batch-inference"
+
+    #######################################################
+    #                                                     #
+    #   Uncomment to use rollback to a specific version   #
+    #                                                     #
+    #######################################################
+
+      # - name: "Targeted Rollback"
+      #   type: "rollback_primary" # Maps to /deployments/rollback_primary endpoint
+      #   target:
+      #     # Model Inference Reference (see options above)
+      #     model_name: {{project_slug}}
+      #     model_inference_reference: "0.1.0"
+      #   champion_status:
+      #     publish_status: "champion"
+      #     deployment_status:
+      #       status: "active"
+      #       reason: "rolled back from previous version"
+      #       inference_type: "batch-inference"
+      #   demoted_status:
+      #     publish_status: "challenger"
+      #     deployment_status:
+      #       status: "demoted"
+      #       reason: "rolled back from new primary"
+      #       inference_type: "batch-inference"
+
+    ##############################################
+    #                                            #
+    #   Uncomment to update a model's metadata   #
+    #                                            #
+    ##############################################
+
+      # - name: "Update Challenger Status"
+      #   type: "update_deployment_status" # Maps to /deployments/update_status endpoint
+      #   target:
+      #     # Model Inference Reference (see options above)
+      #     model_name: {{project_slug}}
+      #     model_inference_reference: "0.1.0"
+      #   updated_status:
+      #     publish_status: "challenger"
+      #     deployment_status:
+      #       status: "active"
+      #       traffic_split_percentage: 0.1
+      #       validation_result: "pending"
+      #       inference_type: "batch-inference"
+      #     challenger_model_ids: # List of UUIDs as strings
+      #       - "1db0c39b-4650-450b-8400-25f3d86d839c"
+      #       # - "another-example-uuid-if-needed"
+
+    # --------------------- STAGE ENVIRONMENT ---------------------
+    stage:
+      api_settings:
+        expanded_model_registry_endpoint: "{{expanded_model_registry_endpoint}}"
+        project_id: "{{project_id_stage}}"
+        region: "{{region}}"
+        deployment_environment: "stage"
+      operations:
+        # To publish to stage, uncomment an operation block here and merge to the 'stage' branch.
+        # - name: "Publishing New Champion to Stage"
+        #   type: "publish_primary"
+        #   ... etc ...
+
+  # --------------------- PROD ENVIRONMENT ---------------------
+  prod:
+    api_settings:
+      expanded_model_registry_endpoint: "{{expanded_model_registry_endpoint}}"
+      project_id: "{{project_id_prod}}"
+      region: "{{region}}"
+      deployment_environment: "prod"
+    operations:
+      # To publish to prod, uncomment an operation block here and merge to the 'main' branch.
+      # - name: "Publishing New Champion to Prod"
+      #   type: "publish_primary"
+      #   ... etc ...

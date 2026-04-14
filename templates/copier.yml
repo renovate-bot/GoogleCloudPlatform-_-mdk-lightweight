@@ -1,0 +1,146 @@
+# Copyright 2026 Google LLC.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+#
+# --- Project and Author Details ---
+#
+project_name:
+  type: str
+  help: The descriptive name of your MLOps project.
+  default: My Model
+
+project_slug:
+  type: str
+  help: A machine-friendly version of the project name (used for folder names, etc.).
+  #default: !jinja "{{ project_name.lower().replace(' ', '_').replace('-', '_') }}"
+  default: "{{ project_name.lower().replace(' ', '_').replace('-', '_') }}"
+
+project_slug_dash:
+  # A version of the slug with dashes replaced with underscores.  (Some parts
+  #   of GCP don't like underscores.)
+  when: false
+  default: "{{ project_slug.replace('_', '-') }}"
+
+lite:
+  type: bool
+  help: Enable lite mode (dev environment only, disabled extended registry)
+  default: false
+
+project_id_dev:
+  type: str
+  help: GCP project ID (dev)
+
+project_id_stage:
+  type: str
+  help: GCP project ID (stage)
+  when: "{{ not lite }}"
+
+project_id_prod:
+  type: str
+  help: GCP project ID (prod)
+  when: "{{ not lite }}"
+
+region:
+  type: str
+  help: GCP region
+  default: us-central1
+
+gcs_data_bucket_dev:
+  type: str
+  help: GCS location used for general purpose storage (dev)
+  default: "gs://{{project_id_dev}}-data"
+
+gcs_data_bucket_stage:
+  type: str
+  help: GCS location used for general purpose storage (stage)
+  default: "gs://{{project_id_stage}}-data"
+  when: "{{ not lite }}"
+
+gcs_data_bucket_prod:
+  type: str
+  help: GCS location used for general purpose storage (prod)
+  default: "gs://{{project_id_prod}}-data"
+  when: "{{ not lite }}"
+
+gcs_pipeline_staging_dir_dev:
+  type: str
+  help: GCS bucket used as temp storage for Vertex AI Pipelines (dev)
+  default: "{{gcs_data_bucket_dev}}/pipeline-staging"
+
+gcs_pipeline_staging_dir_stage:
+  type: str
+  help: GCS bucket used as temp storage for Vertex AI Pipelines (stage)
+  default: "{{gcs_data_bucket_stage}}/pipeline-staging"
+  when: "{{ not lite }}"
+
+gcs_pipeline_staging_dir_prod:
+  type: str
+  help: GCS bucket used as temp storage for Vertex AI Pipelines (prod)
+  default: "{{gcs_data_bucket_prod}}/pipeline-staging"
+  when: "{{ not lite }}"
+
+pipeline_service_account_dev:
+  type: str
+  help: Service account to use for Vertex AI Pipelines (dev)
+  default: "pipeline-sa@{{project_id_dev}}.iam.gserviceaccount.com"
+
+pipeline_service_account_stage:
+  type: str
+  help: Service account to use for Vertex AI Pipelines (stage)
+  default: "pipeline-sa@{{project_id_stage}}.iam.gserviceaccount.com"
+  when: "{{ not lite }}"
+
+pipeline_service_account_prod:
+  type: str
+  help: Service account to use for Vertex AI Pipelines (prod)
+  default: "pipeline-sa@{{project_id_prod}}.iam.gserviceaccount.com"
+  when: "{{ not lite }}"
+
+artifact_registry_repo_dev:
+  type: str
+  help: Artifact Registry repository in which to store container images (dev)
+  default: "us-docker.pkg.dev/{{project_id_dev}}/ml-pipelines-repo"
+
+artifact_registry_repo_stage:
+  type: str
+  help: Artifact Registry repository in which to store container images (stage)
+  default: "us-docker.pkg.dev/{{project_id_stage}}/ml-pipelines-repo"
+  when: "{{ not lite }}"
+
+artifact_registry_repo_prod:
+  type: str
+  help: Artifact Registry repository in which to store container images (prod)
+  default: "us-docker.pkg.dev/{{project_id_prod}}/ml-pipelines-repo"
+  when: "{{ not lite }}"
+
+expanded_model_registry_endpoint:
+  type: str
+  help: Endpoint for the expanded model registry
+  default: "https://expanded-mr-writer-533889642876.us-central1.run.app"
+  when: "{{ not lite }}"
+
+https_proxy:
+  type: str
+  help: |
+    If you need a proxy server for pip/uv, enter it here.
+    If not, you can leave this blank.
+  default: ""
+
+pyproject_exists:
+  when: false
+  default: true
+
+vertex_ai_experiment_name:
+  when: false
+  default: "{{project_slug_dash}}-experiment"
