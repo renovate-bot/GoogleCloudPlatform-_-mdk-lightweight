@@ -178,15 +178,25 @@ Any external variables that are necessary for your workloads (e.g. hyperparamete
 ## 👥 Contributors
 
 [Sean Rastatter](mailto:srastatter@google.com)
+
 [Rawan Badawi](mailto:rawanbadawi@google.com)
+
 [Avi Gupta](mailto:guptaavi@google.com)
+
 [Saumya Bhushan](mailto:saumyabhushan@google.com)
+
 [Juan David Vargas-Lopez](mailto:jdvargas@google.com)
+
 [Neil Bushong](mailto:bushong@google.com)
+
 [Vipul Raja](mailto:vipulraja@google.com)
+
 [Arun Kumar](mailto:uarun@google.com)
+
 [Kash Arcot](mailto:arcotk@google.com)
+
 [Jitendra Jaladi](mailto:jjaladi@google.com)
+
 [Jimit Rangras](mailto:jimitrangras@google.com)
 
 ---
