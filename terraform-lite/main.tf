@@ -20,7 +20,11 @@ resource "google_project_service" "apis" {
     "storage.googleapis.com",
     "artifactregistry.googleapis.com",
     "iam.googleapis.com",
-    "cloudresourcemanager.googleapis.com"
+    "cloudresourcemanager.googleapis.com",
+    "pubsub.googleapis.com",
+    "bigquery.googleapis.com",
+    "secretmanager.googleapis.com",
+    "run.googleapis.com",
   ])
 
   service            = each.key
