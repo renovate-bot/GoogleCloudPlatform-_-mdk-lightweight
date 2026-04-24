@@ -106,7 +106,12 @@ Lite Mode is designed for **rapid local testing** or **initial prototyping** on 
 Its primary function is to **bypass operations targeting the Expanded Model Registry (EMR)** while keeping all Vertex AI Native components (Vertex AI Pipeline submittals, Vertex Model Registry uploads) fully operational.
 
 ### Initializing an App Repo
-To scaffold a new workspace or application repository inside Lite Mode, pass the `--lite` flag during your initial setup initialization:
+To scaffold a new workspace or application repository inside Lite Mode, first change directories to where you want you new workspace/app repository to be located.
+```
+cd ..
+```
+
+Then run `mdk init` and optionally pass the `--lite` flag during your initial setup initialization:
 ```bash
 # Run initialization (Defaults to Lite Mode)
 mdk init

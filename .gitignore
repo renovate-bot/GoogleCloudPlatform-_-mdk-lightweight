@@ -39,3 +39,5 @@ pipeline.yml
 # Ignore generated MDK project
 mdk_project/
 !mdk_project/README.md
+
+todo.md

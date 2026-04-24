@@ -51,6 +51,7 @@ dev = [
     "twine>=6.2.0",
     "scikit-learn>=1.7.2",
     "xgboost<=3.0.2",
+    "shap>=0.48.0",
     "copier",
     "docker"
 ]
